@@ -1,0 +1,107 @@
+PROGRAM PLC_PRG
+VAR
+
+	state: UINT := 0;
+	asdfg: TON;
+	RFID: dc_ecp.Dtm425;
+	DATA: dc_ecp.st_CPF_RfidData;
+	TCPClient: dc_ecp.TcpClientByteStream;
+	DATAIN: STRING;
+	DATAOUT: DWORD;
+	TEST: STRING;
+	Station_ID: STRING;
+	dtNow: DATE_AND_TIME;
+	DATEAndTimeFunctioinBlock: DTU.GetDateAndTime;
+	RandomString: STRING(120);
+	RECIEVED: INT;
+END_VAR	
+
+CASE state OF
+	0: //init
+	GVL.xQA1_RIGHT :=TRUE;
+	GVL.xMB20 := FALSE;
+	RFID.ClearError();
+	state := 1;
+	//Tcpclient.Connect(sIP:='172.20.66.57',uiPort := 11381);
+	Station_ID := 'STPCL_08';
+	
+	
+	1: //wait for rfid
+	IF RFID.xReady THEN
+		RFID.ClearError();
+		RFID.Connect(usiNodeId:=32, usiNetworkId:=0,usiChannel:=1);
+		Tcpclient.Connect(sIP:='172.20.66.43',uiPort := 11381);
+		state :=2;
+	END_IF
+
+	2: // wait for rfid to connect
+	IF RFID.xReady AND tcpclient.xConnected AND tcpclient.xReady THEN
+		state :=3;
+	END_IF
+	
+	3:
+	IF GVL.xBG21 = TRUE THEN
+		GVL.xMB20 := FALSE;
+		state := 4;
+	END_IF
+	
+	4: // read rfid and send to server
+	RFID.ReadTag(uiStartAddress := 0, uiDataLength := SIZEOF(DATA),ADR(DATA));
+	DATEAndTimeFunctioinBlock(xExecute:=TRUE);
+	state :=5;
+	
+	5:
+	IF RFID.xReady AND DATEAndTimeFunctioinBlock.xDone THEN
+		DATAOUT:= dc_ecp.SwapWORD(DATA.uiCarrierID);
+		dtNow := DATEAndTimeFunctioinBlock.dtDateAndTime;
+		
+		RandomString := CONCAT('<station id="',station_ID);
+		RandomString := CONCAT(RandomString, '"> <carrier id="');
+		RandomString := CONCAT(RandomString, DWORD_TO_STRING(DATAOUT));
+		RandomString := CONCAT(RandomString, '"/> <date value="');
+		RandomString := CONCAT(RandomString, DT_TO_STRING(dtNow));
+		Randomstring := CONCAT(RandomString, '"/></station>');
+		
+		
+		tcpClient.Send(pToSend:=ADR(RandomString), uiSizeToSend:=SIZEOF(RandomString));
+		state :=6;
+	END_IF
+	
+	6: //receive data
+	IF TCPclient.TryToReceive(pToReceive:=ADR(DATAIN),uiSizeToReceive:=SIZEOF(DATAIN)) THEN
+		TCPClient.Receive(pToReceive:=ADR(DATAIN),uiSizeToReceive:=SIZEOF(DATAIN));
+		state := 7;
+	END_IF
+	
+	7: // wait for data recieved
+	RECIEVED := STRING_TO_INT(DATAIN);
+	
+
+	state:= 20;
+	
+	10: // release pellet 1-8
+	GVL.xMB20 := TRUE;
+	state := 30;
+	
+	20: // release pellet 9-16
+	asdfg(IN:=TRUE, PT:= INT_TO_TIME(RECIEVED));
+	state:=21;
+	
+	21: //wait for timer
+	IF asdfg.Q THEN
+		GVl.xMB20:= TRUE;
+		state := 30;
+	END_IF
+	
+	30: // wait for carier to pass
+	IF GVL.xBG21 = FALSE THEN
+		GVL.xMB20 := FALSE;
+		state := 1;
+		asdfg.IN:=FALSE;
+	END_IF
+	
+END_CASE
+asdfg();
+TCPClient();
+RFID();
+DATEAndTimeFunctioinBlock();
