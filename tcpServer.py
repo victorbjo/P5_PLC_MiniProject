@@ -9,7 +9,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         wait = waitCalc.getWait(data, waitTimes)
         self.request.sendall(bytes(str(wait)+"\n","utf-8")) 
 if __name__ == "__main__":
-    HOST, PORT = "172.20.66.43", 11381 #Chan ip to pc ip
+    HOST, PORT = "172.20.66.43", 11381 #pc ip
 
     # Create the server, binding to 172.20.66.57 on port 11381
     with socketserver.TCPServer((HOST, PORT), MyTCPHandler) as server:
