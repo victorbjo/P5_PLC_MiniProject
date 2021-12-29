@@ -78,7 +78,7 @@ CASE state OF
 
 	state:= 20;
 	
-	20: // release pellet 9-16
+	20:
 	asdfg(IN:=TRUE, PT:= INT_TO_TIME(RECIEVED)); //Converts int to time, cuz Time is a valid data format?!?! Then sets a timer for that amount of time
 	state:=21;
 	
