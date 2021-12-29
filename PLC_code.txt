@@ -12,7 +12,7 @@ VAR
 	Station_ID: STRING;
 	dtNow: DATE_AND_TIME;
 	DATEAndTimeFunctioinBlock: DTU.GetDateAndTime;
-	RandomString: STRING(120); //Get better names :(
+	RandomString: STRING(120); //Get better names :(, Also 120 bytes long, since normal 80 is not enough. 120 is overkill, but that is the TCP servers problem
 	RECIEVED: INT;
 END_VAR	
 
